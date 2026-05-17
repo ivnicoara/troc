@@ -1,9 +1,11 @@
 // Mock data for the Troc demo. Everything is in-memory; App mirrors
 // the mutable slices (likes/matches/messages/karma) to localStorage.
 
-// --- Offline "photos" -------------------------------------------------
-// No backend, no network: each photo is a hand-tinted SVG with a big
-// glyph, so the flea-market collage feel works fully offline.
+// --- Photos -----------------------------------------------------------
+// Real product photos are pulled by keyword from LoremFlickr (works on
+// any device with a network). If one ever fails to load, the <Photo>
+// component swaps in the hand-tinted SVG fallback below so a card never
+// looks broken.
 const PALETTES = [
   ['#e8c9a0', '#c8643f'],
   ['#bcd0b6', '#3f6b4f'],
@@ -23,7 +25,6 @@ function photo(glyph, seed = 0) {
       </linearGradient>
     </defs>
     <rect width='600' height='760' fill='url(#g)'/>
-    <rect width='600' height='760' fill='none'/>
     <text x='300' y='420' font-size='240' text-anchor='middle'
       font-family='Apple Color Emoji, Segoe UI Emoji, sans-serif'>${glyph}</text>
   </svg>`
@@ -42,8 +43,40 @@ function avatar(glyph, a, b) {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
 
+const flickr = (kw, lock) =>
+  `https://loremflickr.com/640/800/${encodeURIComponent(kw)}?lock=${lock}`
+
+// Build an item's photo set: real keyword photos + matching SVG fallbacks.
+function shots(kw, glyph, locks) {
+  return {
+    photos: locks.map((l) => flickr(kw, l)),
+    fallback: locks.map((_, i) => photo(glyph, i + kw.length)),
+  }
+}
+
 export function makePhoto(glyph, seed = 0) {
   return photo(glyph, seed)
+}
+
+// keyword used to fetch a real photo for user-listed items, by category
+export const CATEGORY_KEYWORD = {
+  electronics: 'gadget',
+  books: 'books',
+  clothing: 'clothing',
+  furniture: 'furniture',
+  kitchen: 'kitchenware',
+  sports: 'sports,equipment',
+  kids: 'toys',
+  other: 'objects',
+}
+
+export function listingPhotos(category, glyph) {
+  const kw = CATEGORY_KEYWORD[category] || 'objects'
+  const lock = Math.floor(Math.random() * 90) + 10
+  return {
+    photos: [flickr(kw, lock)],
+    fallback: [photo(glyph, kw.length)],
+  }
 }
 
 export const ITEM_EMOJIS = [
@@ -129,7 +162,7 @@ export const ITEMS = [
     description:
       'A lovely 35mm rangefinder from the 70s. Light meter still works, leather case included. Shoots beautifully.',
     wants: 'A decent French press or a record crate',
-    photos: [photo('📷', 0), photo('🎞️', 1)],
+    ...shots('vintage,camera', '📷', [11, 12]),
   },
   {
     id: 'i2',
@@ -139,7 +172,7 @@ export const ITEMS = [
     condition: 'good',
     description: 'About 25 records — bebop, cool jazz, a little soul. Sleeves are worn but the wax is clean.',
     wants: 'Open to offers',
-    photos: [photo('🎵', 2)],
+    ...shots('vinyl,records', '🎵', [21, 22]),
   },
   {
     id: 'i3',
@@ -149,7 +182,7 @@ export const ITEMS = [
     condition: 'like new',
     description: 'Warm, punchy little speakers. Barely used since I moved to headphones. Cables included.',
     wants: 'A turntable or amp',
-    photos: [photo('🔊', 3)],
+    ...shots('speaker,audio', '🔊', [31, 32]),
   },
   {
     id: 'i4',
@@ -159,7 +192,7 @@ export const ITEMS = [
     condition: 'good',
     description: 'Enamelled, 5L, the colour of a tomato. Seasoned with years of soup. A little chip on the lid.',
     wants: 'A good chef knife or a cutting board',
-    photos: [photo('🍲', 4)],
+    ...shots('cookware,pot', '🍲', [41, 42]),
   },
   {
     id: 'i5',
@@ -169,7 +202,7 @@ export const ITEMS = [
     condition: 'good',
     description: 'A retired knitter clearing out: merino, alpaca, bamboo needles in many sizes. So much yarn.',
     wants: 'Open to offers',
-    photos: [photo('🧶', 5)],
+    ...shots('wool,yarn', '🧶', [51, 52]),
   },
   {
     id: 'i6',
@@ -179,7 +212,7 @@ export const ITEMS = [
     condition: 'fair',
     description: 'Three tiers of 70s rattan. One leg has been re-glued but it is solid. Plants not included (sadly).',
     wants: 'A grow light or ceramic pots',
-    photos: [photo('🪴', 0)],
+    ...shots('plant,stand', '🪴', [61, 62]),
   },
   {
     id: 'i7',
@@ -189,7 +222,7 @@ export const ITEMS = [
     condition: 'new',
     description: 'Gift I never opened — 1L glass press, copper frame. Still boxed.',
     wants: 'Camera gear or a nice notebook',
-    photos: [photo('☕', 1)],
+    ...shots('frenchpress,coffee', '☕', [71, 72]),
   },
   {
     id: 'i8',
@@ -199,7 +232,7 @@ export const ITEMS = [
     condition: 'good',
     description: 'A dozen contemporary novels, all read once, no broken spines. Happy to split the stack.',
     wants: 'More books, or baking tins',
-    photos: [photo('📚', 2)],
+    ...shots('books,novel', '📚', [81, 82]),
   },
   {
     id: 'i9',
@@ -209,7 +242,7 @@ export const ITEMS = [
     condition: 'like new',
     description: 'Six baking & bread books. I have memorised them; time to pass them on.',
     wants: 'A loaf tin or a kitchen scale',
-    photos: [photo('📖', 3)],
+    ...shots('cookbook', '📖', [91, 92]),
   },
   {
     id: 'i10',
@@ -219,7 +252,7 @@ export const ITEMS = [
     condition: 'like new',
     description: 'Size M, matte sage green, worn one season. Clean pads, no impacts.',
     wants: 'Bike lights or a pannier',
-    photos: [photo('🪖', 4)],
+    ...shots('bicycle,helmet', '🪖', [101, 102]),
   },
   {
     id: 'i11',
@@ -229,7 +262,7 @@ export const ITEMS = [
     condition: 'good',
     description: 'Camel-coloured, size 38, beautifully heavy. Loved but it no longer fits me.',
     wants: 'Open to offers',
-    photos: [photo('🧥', 5)],
+    ...shots('wool,coat', '🧥', [111, 112]),
   },
   {
     id: 'i12',
@@ -239,7 +272,7 @@ export const ITEMS = [
     condition: 'good',
     description: 'Wooden balance bike, both my kids learned on it. Scuffed but sturdy and adorable.',
     wants: 'A scooter or board games',
-    photos: [photo('🚲', 0)],
+    ...shots('kids,bicycle', '🚲', [121, 122]),
   },
   {
     id: 'i13',
@@ -249,7 +282,7 @@ export const ITEMS = [
     condition: 'good',
     description: '18V drill, two batteries, a tin of mixed bits. Garage is overflowing with tools.',
     wants: 'A hand plane or clamps',
-    photos: [photo('🔋', 1)],
+    ...shots('drill,tools', '🔋', [131, 132]),
   },
   {
     id: 'i14',
@@ -259,7 +292,7 @@ export const ITEMS = [
     condition: 'fair',
     description: 'Done a lot of festivals. One pole is taped but it stands fine. Free to a good adventure.',
     wants: 'Open to offers',
-    photos: [photo('⛺', 2)],
+    ...shots('tent,camping', '⛺', [141, 142]),
   },
   {
     id: 'i15',
@@ -269,7 +302,7 @@ export const ITEMS = [
     condition: 'good',
     description: 'Teak, tapered legs, one ring stain that gives it character. Heavier than it looks.',
     wants: 'A reading lamp or a rug',
-    photos: [photo('🪑', 3)],
+    ...shots('table,furniture', '🪑', [151, 152]),
   },
   {
     id: 'i16',
@@ -279,7 +312,7 @@ export const ITEMS = [
     condition: 'like new',
     description: 'Olive wood pieces, folding board. Won it, never play. Deserves someone who does.',
     wants: 'Books or vinyl',
-    photos: [photo('♟️', 4)],
+    ...shots('chess,set', '♟️', [161, 162]),
   },
 ]
 
@@ -319,15 +352,10 @@ export const WISHLIST = [
 // Pre-seeded so the demo opens with social proof and at least one
 // near-match the user can complete on the very first swipe.
 export const SEED_LIKES = [
-  // Bruno already likes Camille's French press (i7) and her Dutch oven (i4).
   { userId: 'u_bruno', itemId: 'i7', dir: 'right' },
   { userId: 'u_bruno', itemId: 'i4', dir: 'super' },
-  // Salomé likes Camille's cast-iron (i4) too.
   { userId: 'u_salome', itemId: 'i4', dir: 'right' },
-  // Thierry likes Bruno's chess set (i16).
   { userId: 'u_thierry', itemId: 'i16', dir: 'right' },
-  // Camille likes Bruno's camera (i1) — so if the demo user (Camille)
-  // likes any Bruno item, or Bruno's existing likes line up, matches pop.
   { userId: 'u_camille', itemId: 'i1', dir: 'right' },
 ]
 

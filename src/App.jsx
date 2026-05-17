@@ -11,7 +11,7 @@ import {
   SEED_KARMA,
   distanceKm,
   karmaBadge,
-  makePhoto,
+  listingPhotos,
 } from './data.js'
 
 const STORE_KEY = 'troc_state_v1'
@@ -191,7 +191,7 @@ export default function App() {
       id: 'mine_' + uid(),
       ownerId: state.currentUserId,
       ...draft,
-      photos: draft.emojis.map((e, idx) => makePhoto(e, idx + draft.title.length)),
+      ...listingPhotos(draft.category, draft.emojis[0] || '📦'),
     }
     setState((s) => ({ ...s, addedItems: [item, ...s.addedItems] }))
     flash('Listed! It’s now in the swap feed.')
@@ -548,9 +548,10 @@ function SwipeCard({ item, owner, depth, isTop, onSwipe }) {
       onPointerUp={onUp}
       onPointerCancel={onUp}
     >
-      <div
+      <Photo
         className="photo"
-        style={{ backgroundImage: `url("${item.photos[photoIdx]}")` }}
+        src={item.photos[photoIdx]}
+        fallback={(item.fallback || [])[photoIdx] || (item.fallback || [])[0]}
       />
       {item.photos.length > 1 && (
         <>
@@ -622,18 +623,24 @@ function MatchModal({ match, me, userById, itemById, onChat, onClose }) {
         </p>
         <div className="match-items">
           <div className="mi">
-            <div
-              className="ph"
-              style={{ backgroundImage: `url("${theirItem.photos[0]}")` }}
-            />
+            <div className="ph">
+              <Photo
+                className="fill"
+                src={theirItem.photos[0]}
+                fallback={(theirItem.fallback || [])[0]}
+              />
+            </div>
             <span>Their {theirItem.title}</span>
           </div>
           <div className="swap">⇄</div>
           <div className="mi">
-            <div
-              className="ph"
-              style={{ backgroundImage: `url("${myItem.photos[0]}")` }}
-            />
+            <div className="ph">
+              <Photo
+                className="fill"
+                src={myItem.photos[0]}
+                fallback={(myItem.fallback || [])[0]}
+              />
+            </div>
             <span>Your {myItem.title}</span>
           </div>
         </div>
@@ -896,10 +903,13 @@ function MyStuffScreen({
           <div className="grid">
             {listed.map((it) => (
               <div className="tile" key={it.id}>
-                <div
-                  className="thumb"
-                  style={{ backgroundImage: `url("${it.photos[0]}")` }}
-                />
+                <div className="thumb">
+                  <Photo
+                    className="fill"
+                    src={it.photos[0]}
+                    fallback={(it.fallback || [])[0]}
+                  />
+                </div>
                 <div className="body">
                   <h4>{it.title}</h4>
                   <p>
@@ -918,10 +928,13 @@ function MyStuffScreen({
           <div className="grid">
             {liked.map((it) => (
               <div className="tile" key={it.id}>
-                <div
-                  className="thumb"
-                  style={{ backgroundImage: `url("${it.photos[0]}")` }}
-                />
+                <div className="thumb">
+                  <Photo
+                    className="fill"
+                    src={it.photos[0]}
+                    fallback={(it.fallback || [])[0]}
+                  />
+                </div>
                 <div className="body">
                   <h4>{it.title}</h4>
                   <p>by {userById(it.ownerId).firstName}</p>
@@ -1378,6 +1391,21 @@ function Stat({ n, label }) {
         {label}
       </div>
     </div>
+  )
+}
+
+function Photo({ src, fallback, className }) {
+  const [err, setErr] = useState(false)
+  useEffect(() => setErr(false), [src])
+  return (
+    <img
+      className={className}
+      src={err || !src ? fallback : src}
+      alt=""
+      draggable={false}
+      loading="lazy"
+      onError={() => setErr(true)}
+    />
   )
 }
 
