@@ -277,13 +277,6 @@ export default function App() {
     flash('Demo reset.')
   }
 
-  const switchUser = (id) => {
-    knownMatches.current = new Set(matches.map((m) => m.id))
-    setState((s) => ({ ...s, currentUserId: id }))
-    setOpenChat(null)
-    setTab('feed')
-  }
-
   const unreadCount = myMatches.filter((m) => (state.messages[m.id] || []).length)
     .length
 
@@ -293,19 +286,6 @@ export default function App() {
         <div className="wordmark">
           troc<span className="dot" />
           <small>barter, not buy</small>
-        </div>
-        <div className="demo-switch" title="Switch demo user">
-          <span>as</span>
-          {USERS.map((u) => (
-            <button
-              key={u.id}
-              className={u.id === state.currentUserId ? 'active' : ''}
-              onClick={() => switchUser(u.id)}
-              title={u.firstName}
-            >
-              <img src={u.avatar} alt={u.firstName} />
-            </button>
-          ))}
         </div>
       </div>
 
@@ -426,6 +406,7 @@ export default function App() {
 
 /* ===================== Feed ===================== */
 function FeedScreen({ feed, me, userById, radius, setRadius, supersLeft, onSwipe }) {
+  const [detail, setDetail] = useState(null)
   return (
     <div className="screen">
       <div className="radius-bar">
@@ -447,8 +428,8 @@ function FeedScreen({ feed, me, userById, radius, setRadius, supersLeft, onSwipe
             <div className="big">🧺</div>
             <h3 className="serif">The market’s quiet</h3>
             <p className="muted">
-              No more nearby swaps right now. Widen your radius, switch demo
-              user, or list something of your own.
+              No more nearby swaps right now. Widen your radius or list
+              something of your own.
             </p>
           </div>
         ) : (
@@ -465,6 +446,7 @@ function FeedScreen({ feed, me, userById, radius, setRadius, supersLeft, onSwipe
                   depth={arr.length - 1 - idx}
                   isTop={isTop}
                   onSwipe={(dir) => onSwipe(item, dir)}
+                  onOpen={() => setDetail(item)}
                 />
               )
             })
@@ -500,18 +482,109 @@ function FeedScreen({ feed, me, userById, radius, setRadius, supersLeft, onSwipe
         className="muted"
         style={{ textAlign: 'center', marginTop: 8, fontSize: '0.74rem' }}
       >
-        Swipe the card → interested · ← pass · ↑ super-swap ·{' '}
+        Tap a card for details · swipe → interested · ← pass · ↑ super ·{' '}
         {supersLeft} super left today
       </p>
+      {detail && (
+        <ItemDetail
+          item={detail}
+          owner={userById(detail.ownerId)}
+          onClose={() => setDetail(null)}
+          onSwipe={(dir) => {
+            setDetail(null)
+            onSwipe(detail, dir)
+          }}
+        />
+      )}
     </div>
   )
 }
 
-function SwipeCard({ item, owner, depth, isTop, onSwipe }) {
+function ItemDetail({ item, owner, onClose, onSwipe }) {
+  return (
+    <div className="full detail">
+      <div className="detail-top">
+        <button className="icon-btn" onClick={onClose}>
+          ←
+        </button>
+        <span className="muted" style={{ fontWeight: 800 }}>
+          {item.category}
+        </span>
+        <span className="chip cond">{item.condition}</span>
+      </div>
+      <div className="detail-scroll">
+        {item.wantsYour && item.wantsYour.length > 0 && (
+          <div
+            className="interest-ribbon"
+            style={{ position: 'static', margin: '0 0 12px' }}
+          >
+            👀 {owner.firstName} wants your{' '}
+            <strong>{item.wantsYour[0].title}</strong>
+            {item.wantsYour.length > 1 &&
+              ` +${item.wantsYour.length - 1} more`}
+            <span className="ir-cta">interested → instant match</span>
+          </div>
+        )}
+        {item.photos.map((p, i) => (
+          <Photo
+            key={i}
+            className="detail-photo"
+            src={p}
+            fallback={(item.fallback || [])[i] || (item.fallback || [])[0]}
+          />
+        ))}
+        <div className="detail-body">
+          <h2 className="serif">{item.title}</h2>
+          <div className="owner-line">
+            <img src={owner.avatar} alt="" />
+            <div>
+              <strong>{owner.firstName}</strong>
+              <div className="muted" style={{ fontSize: '0.8rem' }}>
+                {item.dist != null
+                  ? `${item.dist.toFixed(1)} km away · ${owner.neighborhood}`
+                  : owner.neighborhood}
+              </div>
+            </div>
+          </div>
+          <p className="detail-desc">{item.description}</p>
+          <div className="detail-section">
+            <span className="ds-label">Hoping to get</span>
+            <p>🤝 {item.wants}</p>
+          </div>
+          <div className="detail-section">
+            <span className="ds-label">About {owner.firstName}</span>
+            <p>{owner.bio}</p>
+          </div>
+          <div className="safety-note" style={{ margin: '4px 0 0' }}>
+            🛡️
+            <span>
+              Only first names are shown. Arrange to meet in a busy public
+              place — never share your home address.
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="detail-actions">
+        <button className="fab nope" onClick={() => onSwipe('left')}>
+          ✕
+        </button>
+        <button className="fab super" onClick={() => onSwipe('super')}>
+          ⭐
+        </button>
+        <button className="fab like" onClick={() => onSwipe('right')}>
+          ♥
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function SwipeCard({ item, owner, depth, isTop, onSwipe, onOpen }) {
   const [drag, setDrag] = useState({ x: 0, y: 0 })
   const [leaving, setLeaving] = useState(null)
   const [photoIdx, setPhotoIdx] = useState(0)
   const start = useRef(null)
+  const cardRef = useRef(null)
 
   const onDown = (e) => {
     if (!isTop || leaving) return
@@ -532,14 +605,26 @@ function SwipeCard({ item, owner, depth, isTop, onSwipe }) {
     setLeaving(fly)
     setTimeout(() => onSwipe(dir), 230)
   }
-  const onUp = () => {
+  const onUp = (e) => {
     if (!start.current) return
     start.current = null
     const { x, y } = drag
     if (y < -130 && Math.abs(y) > Math.abs(x)) finish('super')
     else if (x > 120) finish('right')
     else if (x < -120) finish('left')
-    else setDrag({ x: 0, y: 0 })
+    else if (Math.abs(x) < 9 && Math.abs(y) < 9) {
+      // a tap: edges flip photos, the middle opens the full profile
+      const rect = cardRef.current?.getBoundingClientRect()
+      const rel = rect ? (e.clientX - rect.left) / rect.width : 0.5
+      if (item.photos.length > 1 && rel < 0.28) {
+        setPhotoIdx((i) => (i - 1 + item.photos.length) % item.photos.length)
+      } else if (item.photos.length > 1 && rel > 0.72) {
+        setPhotoIdx((i) => (i + 1) % item.photos.length)
+      } else {
+        onOpen()
+      }
+      setDrag({ x: 0, y: 0 })
+    } else setDrag({ x: 0, y: 0 })
   }
 
   const pos = leaving || drag
@@ -567,6 +652,7 @@ function SwipeCard({ item, owner, depth, isTop, onSwipe }) {
   return (
     <div
       className="card"
+      ref={cardRef}
       style={style}
       onPointerDown={onDown}
       onPointerMove={onMove}
@@ -579,23 +665,23 @@ function SwipeCard({ item, owner, depth, isTop, onSwipe }) {
         fallback={(item.fallback || [])[photoIdx] || (item.fallback || [])[0]}
       />
       {item.photos.length > 1 && (
-        <>
-          <div
-            className="photo-nav left"
-            onClick={() =>
-              setPhotoIdx((i) => (i - 1 + item.photos.length) % item.photos.length)
-            }
-          />
-          <div
-            className="photo-nav right"
-            onClick={() => setPhotoIdx((i) => (i + 1) % item.photos.length)}
-          />
-          <div className="dots">
-            {item.photos.map((_, i) => (
-              <i key={i} className={i === photoIdx ? 'on' : ''} />
-            ))}
-          </div>
-        </>
+        <div className="dots">
+          {item.photos.map((_, i) => (
+            <i key={i} className={i === photoIdx ? 'on' : ''} />
+          ))}
+        </div>
+      )}
+      {isTop && (
+        <button
+          className="detail-hint"
+          onPointerUp={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpen()
+          }}
+        >
+          ⓘ Details
+        </button>
       )}
       <div className="badges">
         <span className="chip cond">{item.condition}</span>
@@ -646,14 +732,37 @@ function MatchModal({ match, me, userById, itemById, onChat, onClose }) {
   const theirItem = itemById(
     match.a === me.id ? match.itemFromB : match.itemFromA,
   )
+
+  // Celebrate, then whisk the user into the conversation automatically.
+  useEffect(() => {
+    const t = setTimeout(onChat, 2600)
+    return () => clearTimeout(t)
+  }, [])
+
+  const confetti = ['🤝', '✨', '🎉', '🧡', '🫶', '🪅', '🌿', '⭐']
+
   return (
     <div className="overlay" onClick={onClose}>
+      <div className="confetti">
+        {Array.from({ length: 22 }).map((_, i) => (
+          <span
+            key={i}
+            style={{
+              left: `${(i * 4.5) % 100}%`,
+              animationDelay: `${(i % 7) * 0.12}s`,
+              fontSize: `${14 + ((i * 7) % 16)}px`,
+            }}
+          >
+            {confetti[i % confetti.length]}
+          </span>
+        ))}
+      </div>
       <div className="match-card" onClick={(e) => e.stopPropagation()}>
         <div className="kicker">It’s a troc!</div>
         <h2 className="serif">A swap is brewing</h2>
         <p>
-          You and {other.firstName} each want what the other’s offering. Sort
-          out a fair trade and a safe spot to meet.
+          You and {other.firstName} each want what the other’s offering —
+          taking you to the chat…
         </p>
         <div className="match-items">
           <div className="mi">
@@ -679,14 +788,17 @@ function MatchModal({ match, me, userById, itemById, onChat, onClose }) {
           </div>
         </div>
         <button className="btn block green" onClick={onChat}>
-          💬 Start chatting
+          💬 Go to chat now
         </button>
+        <div className="redirect-bar">
+          <i />
+        </div>
         <button
           className="link"
-          style={{ marginTop: 14, display: 'block', width: '100%' }}
+          style={{ marginTop: 12, display: 'block', width: '100%' }}
           onClick={onClose}
         >
-          Keep swapping
+          Keep swapping instead
         </button>
       </div>
     </div>
@@ -904,8 +1016,29 @@ function MyStuffScreen({
   onOpenChat,
 }) {
   const [sub, setSub] = useState('listed')
+  const [objFilter, setObjFilter] = useState('all')
   const meId = state.currentUserId
   const listed = allItems.filter((i) => i.ownerId === meId)
+
+  const myWantedIn = (m) => {
+    const other = m.a === meId ? m.b : m.a
+    return state.likes
+      .filter(
+        (l) =>
+          l.userId === other &&
+          (l.dir === 'right' || l.dir === 'super') &&
+          itemById(l.itemId)?.ownerId === meId,
+      )
+      .map((l) => l.itemId)
+  }
+  const matchedObjIds = [
+    ...new Set(myMatches.flatMap((m) => myWantedIn(m))),
+  ]
+  const matchObjects = listed.filter((i) => matchedObjIds.includes(i.id))
+  const shownMatches =
+    objFilter === 'all'
+      ? myMatches
+      : myMatches.filter((m) => myWantedIn(m).includes(objFilter))
   const likedIds = state.likes
     .filter((l) => l.userId === meId && l.dir !== 'left')
     .map((l) => l.itemId)
@@ -982,17 +1115,64 @@ function MyStuffScreen({
 
       {sub === 'matches' &&
         (myMatches.length ? (
-          myMatches.map((m) => (
-            <MatchRow
-              key={m.id}
-              m={m}
-              meId={meId}
-              userById={userById}
-              itemById={itemById}
-              onOpen={() => onOpenChat(m)}
-              completed={state.completed.includes(m.id)}
-            />
-          ))
+          <>
+            <p className="muted" style={{ margin: '0 2px 8px' }}>
+              Filter by one of your objects to see who wants it.
+            </p>
+            <div className="obj-strip">
+              <button
+                className={`obj-chip ${objFilter === 'all' ? 'on' : ''}`}
+                onClick={() => setObjFilter('all')}
+              >
+                <span className="oc-all">All</span>
+                <small>{myMatches.length}</small>
+              </button>
+              {matchObjects.map((it) => {
+                const n = myMatches.filter((m) =>
+                  myWantedIn(m).includes(it.id),
+                ).length
+                return (
+                  <button
+                    key={it.id}
+                    className={`obj-chip ${objFilter === it.id ? 'on' : ''}`}
+                    onClick={() => setObjFilter(it.id)}
+                    title={it.title}
+                  >
+                    <Photo
+                      className="oc-img"
+                      src={it.photos[0]}
+                      fallback={(it.fallback || [])[0]}
+                    />
+                    <small>{n}</small>
+                  </button>
+                )
+              })}
+            </div>
+            {objFilter !== 'all' && (
+              <h3
+                className="serif"
+                style={{ margin: '4px 2px 10px', fontSize: '1.1rem' }}
+              >
+                Matches for “{itemById(objFilter)?.title}”
+              </h3>
+            )}
+            {shownMatches.length ? (
+              shownMatches.map((m) => (
+                <MatchRow
+                  key={m.id}
+                  m={m}
+                  meId={meId}
+                  userById={userById}
+                  itemById={itemById}
+                  focusItemId={objFilter !== 'all' ? objFilter : null}
+                  onOpen={() => onOpenChat(m)}
+                  completed={state.completed.includes(m.id)}
+                />
+              ))
+            ) : (
+              <Empty glyph="🤝" text="No matches for this object yet." />
+            )}
+          </>
         ) : (
           <Empty
             glyph="🤝"
@@ -1043,10 +1223,20 @@ function MyStuffScreen({
   )
 }
 
-function MatchRow({ m, meId, userById, itemById, onOpen, completed }) {
+function MatchRow({
+  m,
+  meId,
+  userById,
+  itemById,
+  onOpen,
+  completed,
+  focusItemId,
+}) {
   const other = userById(m.a === meId ? m.b : m.a)
   const theirItem = itemById(m.a === meId ? m.itemFromB : m.itemFromA)
-  const myItem = itemById(m.a === meId ? m.itemFromA : m.itemFromB)
+  const myItem = itemById(
+    focusItemId || (m.a === meId ? m.itemFromA : m.itemFromB),
+  )
   return (
     <div className="card-soft" style={{ marginBottom: 10 }} onClick={onOpen}>
       <div className="row">

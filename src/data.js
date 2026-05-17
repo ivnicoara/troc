@@ -47,10 +47,12 @@ const flickr = (kw, lock) =>
   `https://loremflickr.com/640/800/${encodeURIComponent(kw)}?lock=${lock}`
 
 // Build an item's photo set: real keyword photos + matching SVG fallbacks.
+// Expanded to 3 shots so the detail "profile" view has a gallery.
 function shots(kw, glyph, locks) {
+  const all = [...locks, locks[0] + 503, locks[0] + 907].slice(0, 3)
   return {
-    photos: locks.map((l) => flickr(kw, l)),
-    fallback: locks.map((_, i) => photo(glyph, i + kw.length)),
+    photos: all.map((l) => flickr(kw, l)),
+    fallback: all.map((_, i) => photo(glyph, i + kw.length)),
   }
 }
 
