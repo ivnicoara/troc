@@ -1,5 +1,6 @@
 // Mock data for the Troc demo. Everything is in-memory; App mirrors
 // the mutable slices (likes/matches/messages/karma) to localStorage.
+import { itemArt, categoryArt } from './illustrations.js'
 
 // --- Photos -----------------------------------------------------------
 // Real product photos are pulled by keyword from LoremFlickr (works on
@@ -43,17 +44,10 @@ function avatar(glyph, a, b) {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`
 }
 
-const flickr = (kw, lock) =>
-  `https://loremflickr.com/640/800/${encodeURIComponent(kw)}?lock=${lock}`
-
-// Build an item's photo set: real keyword photos + matching SVG fallbacks.
-// Expanded to 3 shots so the detail "profile" view has a gallery.
-function shots(kw, glyph, locks) {
-  const all = [...locks, locks[0] + 503, locks[0] + 907].slice(0, 3)
-  return {
-    photos: all.map((l) => flickr(kw, l)),
-    fallback: all.map((_, i) => photo(glyph, i + kw.length)),
-  }
+// Photos are recognizable inline illustrations of each item (see
+// illustrations.js) so the picture always matches the listing.
+function shots() {
+  return {}
 }
 
 export function makePhoto(glyph, seed = 0) {
@@ -73,12 +67,8 @@ export const CATEGORY_KEYWORD = {
 }
 
 export function listingPhotos(category, glyph) {
-  const kw = CATEGORY_KEYWORD[category] || 'objects'
-  const lock = Math.floor(Math.random() * 90) + 10
-  return {
-    photos: [flickr(kw, lock)],
-    fallback: [photo(glyph, kw.length)],
-  }
+  const art = categoryArt(category, 3)
+  return { photos: art, fallback: [photo(glyph, 3), ...art.slice(1)] }
 }
 
 export const ITEM_EMOJIS = [
@@ -154,7 +144,7 @@ export const USERS = [
   },
 ]
 
-export const ITEMS = [
+const RAW_ITEMS = [
   {
     id: 'i1',
     ownerId: 'u_bruno',
@@ -317,6 +307,11 @@ export const ITEMS = [
     ...shots('chess,set', '♟️', [161, 162]),
   },
 ]
+
+export const ITEMS = RAW_ITEMS.map((it) => {
+  const art = itemArt(it.id, 3)
+  return { ...it, photos: art, fallback: art }
+})
 
 export const WISHLIST = [
   {
