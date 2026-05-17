@@ -399,6 +399,43 @@ h3,
   max-width: 70%;
 }
 
+.interest-ribbon {
+  position: absolute;
+  top: 64px;
+  left: 14px;
+  right: 14px;
+  z-index: 4;
+  background: rgba(63, 107, 79, 0.94);
+  color: #fdf6e8;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 16px;
+  padding: 10px 14px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.3;
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(4px);
+  animation: ribbonpop 0.35s cubic-bezier(0.2, 1.2, 0.3, 1);
+}
+.interest-ribbon strong {
+  color: var(--mustard);
+}
+.interest-ribbon .ir-cta {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-top: 3px;
+}
+@keyframes ribbonpop {
+  from {
+    transform: translateY(-8px) scale(0.96);
+    opacity: 0;
+  }
+}
+
 .stamp {
   position: absolute;
   top: 46px;

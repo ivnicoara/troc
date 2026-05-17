@@ -27,6 +27,7 @@ const DEFAULT_STATE = {
   messages: {},
   karma: { ...SEED_KARMA },
   completed: [],
+  unmatched: [],
   blocked: {},
   profiles: {},
   superUsage: {},
@@ -112,8 +113,8 @@ export default function App() {
         }
       }
     }
-    return out
-  }, [state.likes, state.addedItems])
+    return out.filter((m) => !state.unmatched.includes(m.id))
+  }, [state.likes, state.addedItems, state.unmatched])
 
   // Pop the celebratory screen only for matches created after load.
   useEffect(() => {
@@ -149,9 +150,21 @@ export default function App() {
       .map((it) => ({
         ...it,
         dist: distanceKm(me, userById(it.ownerId)),
+        wantsYour: state.likes
+          .filter(
+            (l) =>
+              l.userId === it.ownerId &&
+              (l.dir === 'right' || l.dir === 'super') &&
+              itemById(l.itemId)?.ownerId === state.currentUserId,
+          )
+          .map((l) => itemById(l.itemId))
+          .filter(Boolean),
       }))
       .filter((it) => it.dist <= radius)
-      .sort((x, y) => x.dist - y.dist)
+      .sort((x, y) => {
+        const w = (it) => (it.wantsYour.length ? 1 : 0)
+        return w(y) - w(x) || x.dist - y.dist
+      })
   }, [allItems, state.likes, state.currentUserId, radius, state.blocked, me])
 
   const superUse = state.superUsage[state.currentUserId]
@@ -213,6 +226,17 @@ export default function App() {
         },
       }
     })
+  }
+
+  const unmatch = (m) => {
+    setState((s) => ({
+      ...s,
+      unmatched: s.unmatched.includes(m.id)
+        ? s.unmatched
+        : [...s.unmatched, m.id],
+    }))
+    setOpenChat(null)
+    flash('Unmatched. The swap was called off.')
   }
 
   const completeSwap = (m) => {
@@ -387,6 +411,7 @@ export default function App() {
           onBack={() => setOpenChat(null)}
           onSend={sendMessage}
           onComplete={completeSwap}
+          onUnmatch={unmatch}
           onBlock={blockUser}
           onReport={() =>
             flash('Report sent to the Troc team. Thanks for keeping it kind.')
@@ -580,6 +605,15 @@ function SwipeCard({ item, owner, depth, isTop, onSwipe }) {
         )}
       </div>
       <div className="scrim" />
+      {item.wantsYour && item.wantsYour.length > 0 && (
+        <div className="interest-ribbon">
+          👀 {owner.firstName} wants your{' '}
+          <strong>{item.wantsYour[0].title}</strong>
+          {item.wantsYour.length > 1 &&
+            ` +${item.wantsYour.length - 1} more`}
+          <span className="ir-cta">swipe right → instant match</span>
+        </div>
+      )}
       <div className="stamp like" style={{ opacity: likeOp }}>
         Want
       </div>
@@ -1047,6 +1081,7 @@ function ChatScreen({
   onBack,
   onSend,
   onComplete,
+  onUnmatch,
   onBlock,
   onReport,
 }) {
@@ -1182,7 +1217,16 @@ function ChatScreen({
         <div className="sheet" onClick={() => setShowMore(false)}>
           <div className="sheet-inner" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-grab" />
-            <h3 className="serif">Safety</h3>
+            <h3 className="serif">Match options</h3>
+            <button
+              className="btn ghost block"
+              style={{ marginBottom: 10 }}
+              onClick={() => {
+                onUnmatch(match)
+              }}
+            >
+              💔 Unmatch — can’t agree on the swap
+            </button>
             <button
               className="btn ghost block"
               style={{ marginBottom: 10 }}
