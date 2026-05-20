@@ -2,6 +2,28 @@
 // the mutable slices (likes/matches/messages/karma) to localStorage.
 import { itemArt, categoryArt } from './illustrations.js'
 
+// Generated product photos (one per item), served from CDN. The
+// illustration is kept as a fallback so a card never breaks.
+const CDN = 'https://d8j0ntlcm91z4.cloudfront.net/user_36Al1DT1x8p69gHWJcovMibmt6M'
+const IMG = {
+  i1: `${CDN}/hf_20260520_194957_2bb59d07-708f-44c4-9be7-c45616642a1e_min.webp`,
+  i2: `${CDN}/hf_20260520_195417_0db29e9b-1762-4c03-aeb3-4052daee58e8_min.webp`,
+  i3: `${CDN}/hf_20260520_195424_d734351d-07b7-41f4-a2a9-1e6287761cc6_min.webp`,
+  i4: `${CDN}/hf_20260520_195431_38c35f89-4d14-4794-b026-5412c877d896_min.webp`,
+  i5: `${CDN}/hf_20260520_195438_e02cdd2f-784e-43ac-8a6d-dcf3a985ef6a_min.webp`,
+  i6: `${CDN}/hf_20260520_195444_e10a5f82-ba00-4959-a915-991f3fa9db04_min.webp`,
+  i7: `${CDN}/hf_20260520_195450_160373bb-e0a9-4f49-b48e-83dc3f4d7274_min.webp`,
+  i8: `${CDN}/hf_20260520_195456_fe4bf4c0-c75f-464f-a2bc-a889543d0420_min.webp`,
+  i9: `${CDN}/hf_20260520_195503_2c862c66-6982-45d8-a1a4-7eff264a9661_min.webp`,
+  i10: `${CDN}/hf_20260520_195510_280eeb89-0bc5-4bb6-be00-d2955d800224_min.webp`,
+  i11: `${CDN}/hf_20260520_195516_5bd00a4c-8a70-4b5b-8b4f-a65a5b74910f_min.webp`,
+  i12: `${CDN}/hf_20260520_195523_3b8e3198-01c9-46ba-818c-a7a2266af8fc_min.webp`,
+  i13: `${CDN}/hf_20260520_195530_27305c07-e824-4e38-a81b-0435213a7539_min.webp`,
+  i14: `${CDN}/hf_20260520_195537_f54f2921-39c3-459f-91ee-ce49d1ca42f1_min.webp`,
+  i15: `${CDN}/hf_20260520_195545_6fa61c8f-562d-4276-b13a-d21b9ac1fd56_min.webp`,
+  i16: `${CDN}/hf_20260520_195551_4cdbfabc-6996-436a-bc14-8cf4b43c75a6_min.webp`,
+}
+
 // --- Photos -----------------------------------------------------------
 // Real product photos are pulled by keyword from LoremFlickr (works on
 // any device with a network). If one ever fails to load, the <Photo>
@@ -309,8 +331,13 @@ const RAW_ITEMS = [
 ]
 
 export const ITEMS = RAW_ITEMS.map((it) => {
-  const art = itemArt(it.id, 3)
-  return { ...it, photos: art, fallback: art }
+  const art = itemArt(it.id, 1)
+  const url = IMG[it.id]
+  return {
+    ...it,
+    photos: url ? [url] : art,
+    fallback: art,
+  }
 })
 
 export const WISHLIST = [
