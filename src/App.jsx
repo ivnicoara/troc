@@ -671,18 +671,6 @@ function SwipeCard({ item, owner, depth, isTop, onSwipe, onOpen }) {
           ))}
         </div>
       )}
-      {isTop && (
-        <button
-          className="detail-hint"
-          onPointerUp={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation()
-            onOpen()
-          }}
-        >
-          ⓘ Details
-        </button>
-      )}
       <div className="badges">
         <span className="chip cond">{item.condition}</span>
         <span className="chip cat">{item.category}</span>
